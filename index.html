@@ -1,3 +1,90 @@
 <!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><title>Esoteric Crypto Chat</title></head>
-<body><p>まだ配信されていません。CI の deploy ワークフローが Web 版をここに置きます。</p></body></html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f172a" />
+    <title>Esoteric Crypto Chat</title>
+    <script>
+      /*
+       * 起動に失敗したことを画面に出すための最小限の仕掛け。
+       *
+       * アプリ本体の JS が古い WebView で構文解析に失敗すると、
+       * 一行も実行されないまま真っ暗な画面だけが残る。
+       * 実際に Android 9 / WebView 74 の端末でこれが起き、
+       * adb を繋いで logcat を見るまで原因が分からなかった。
+       *
+       * このスクリプトは **ES5 の文法だけ**で書いてある。
+       * アプリ本体が解析できないほど古い環境でも、これだけは動く必要があるため。
+       * アロー関数もテンプレートリテラルも使わないこと。
+       */
+      (function () {
+        var problems = [];
+
+        function render() {
+          var root = document.getElementById("root");
+          if (!root) return;
+          var lines = [
+            "アプリを起動できませんでした。",
+            "",
+            "この端末のブラウザエンジンが、アプリの想定より古い可能性があります。",
+            "",
+            "端末情報:",
+            navigator.userAgent,
+            "",
+            "詳細:",
+          ].concat(problems);
+
+          root.innerHTML = "";
+          var box = document.createElement("pre");
+          box.style.cssText =
+            "margin:0;padding:16px;color:#e2e8f0;background:#0f172a;" +
+            "font:12px/1.7 monospace;white-space:pre-wrap;word-break:break-all;" +
+            "min-height:100vh;box-sizing:border-box";
+          box.appendChild(document.createTextNode(lines.join("\n")));
+          root.appendChild(box);
+        }
+
+        function note(text) {
+          problems.push(text);
+          // 既に致命的だと分かっているので、待たずに出す
+          render();
+        }
+
+        window.addEventListener("error", function (event) {
+          // **立ち上がった後は画面を潰さない。** ここを無条件にすると、
+          // 付随する機能がひとつ失敗しただけでアプリ全体が開けなくなる
+          // (通知の準備が落ちてアルバムごと開けなくなったことがある)。
+          // この見張りの役目は「そもそも起動できない」を伝えること。
+          if (window.__appMounted) return;
+          if (event && event.message) {
+            note(
+              event.message +
+                (event.filename ? "\n  " + event.filename + ":" + event.lineno : "")
+            );
+          }
+        });
+
+        window.addEventListener("unhandledrejection", function (event) {
+          if (window.__appMounted) return;
+          note("未処理の例外: " + String(event && event.reason));
+        });
+
+        // 例外が出ないまま何も描画されないこともある (読み込みが止まったなど)。
+        // 一定時間たっても React が立ち上がっていなければ、そのことを伝える。
+        window.setTimeout(function () {
+          if (window.__appMounted) return;
+          if (problems.length === 0) {
+            problems.push("画面の描画が始まりませんでした。");
+          }
+          render();
+        }, 8000);
+      })();
+    </script>
+    <script type="module" crossorigin src="/esoteric-crypto-chat/assets/index-COueIabz.js"></script>
+    <link rel="stylesheet" crossorigin href="/esoteric-crypto-chat/assets/index-Ospnh1Bl.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
